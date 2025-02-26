@@ -8,19 +8,22 @@ use Illuminate\Http\Request;
 
 class NovelController extends Controller
 {
-    // Menampilkan semua novel
     public function index()
     {
-        $novels = Novel::all();
+        // Menggunakan nested eager loading untuk memuat relasi contributor dan user
+        $novels = Novel::with('contributor.user')->get();
+
+        // Mengembalikan respons JSON dengan data relasi
         return response()->json(['novels' => $novels]);
     }
 
     // Menampilkan detail novel berdasarkan slug
     public function show($slug)
     {
-        $novel = Novel::where('slug', $slug)->firstOrFail();
+        $novel = Novel::where('slug', $slug)->with('contributor.user')->firstOrFail();
         return response()->json(['novel' => $novel]);
     }
+    
 
     // Menambahkan novel baru
     public function store(Request $request)
@@ -70,5 +73,29 @@ class NovelController extends Controller
         $novel->delete();
 
         return response()->json(['message' => 'Novel deleted']);
+    }
+
+    // Menampilkan novel terkait berdasarkan slug
+    public function relatedNovels($slug)
+    {
+        // Temukan novel berdasarkan slug
+        $novel = Novel::where('slug', $slug)->firstOrFail();
+
+        // Ekstrak kata-kata dari description novel saat ini
+        $keywords = explode(' ', strtolower($novel->description));
+        $keywords = array_unique(array_filter($keywords)); // Hapus duplikat dan kata kosong
+
+        // Cari novel terkait berdasarkan kata-kata dalam description
+        $relatedNovels = Novel::where('id', '!=', $novel->id) // Jangan tampilkan novel yang sama
+            ->where(function ($query) use ($keywords) {
+                foreach ($keywords as $keyword) {
+                    $query->orWhere('description', 'LIKE', '%' . $keyword . '%');
+                }
+            })
+            ->with('contributor.user') // Muat relasi contributor dan user
+            ->limit(5) // Batasi hasil menjadi 5 novel terkait
+            ->get();
+
+        return response()->json(['related_novels' => $relatedNovels]);
     }
 }

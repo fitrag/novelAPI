@@ -32,6 +32,9 @@ Route::group(['prefix' => 'public'], function () {
     // Lihat semua chapter dari sebuah novel
     Route::get('/novels/{novelSlug}/chapters', [ChapterController::class, 'index']);
 
+    // Lihat novel terkait berdasarkan slug
+    Route::get('/novels/{slug}/related', [NovelController::class, 'relatedNovels']);
+
     // Lihat detail chapter berdasarkan slug
     Route::get('/chapters/{slug}', [ChapterController::class, 'show']);
 });

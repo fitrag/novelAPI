@@ -19,8 +19,37 @@ class ChapterController extends Controller
     // Menampilkan detail chapter berdasarkan slug
     public function show($slug)
     {
-        $chapter = Chapter::where('slug', $slug)->firstOrFail();
-        return response()->json(['chapter' => $chapter]);
+        // Temukan chapter berdasarkan slug dan muat relasi novel beserta contributor
+        $chapter = Chapter::where('slug', $slug)->with(['novel.contributor.user'])->firstOrFail();
+
+        // Cari chapter sebelumnya (prev) berdasarkan order
+        $prevChapter = Chapter::where('novel_id', $chapter->novel_id)
+            ->where('order', '<', $chapter->order)
+            ->orderBy('order', 'desc')
+            ->first();
+
+        // Cari chapter berikutnya (next) berdasarkan order
+        $nextChapter = Chapter::where('novel_id', $chapter->novel_id)
+            ->where('order', '>', $chapter->order)
+            ->orderBy('order', 'asc')
+            ->first();
+
+        return response()->json([
+            'chapter' => $chapter,
+            'novel' => $chapter->novel, // Sertakan data novel secara eksplisit
+            'pagination' => [
+                'prev' => $prevChapter ? [
+                    'id' => $prevChapter->id,
+                    'title' => $prevChapter->title,
+                    'slug' => $prevChapter->slug,
+                ] : null,
+                'next' => $nextChapter ? [
+                    'id' => $nextChapter->id,
+                    'title' => $nextChapter->title,
+                    'slug' => $nextChapter->slug,
+                ] : null,
+            ],
+        ]);
     }
 
     // Menambahkan chapter baru ke novel tertentu
